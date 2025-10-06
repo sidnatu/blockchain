@@ -1,0 +1,15 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Local blockchain data
+.chain_state.json
+
+# Virtual environments
+venv/
+env/
+
+# IDE/editor junk
+.vscode/
+.idea/
+.DS_Store
