@@ -70,7 +70,7 @@ class Blockchain (object):
     def last_block(self):
         return self.chain[-1];
     
-## CREATING QUICK FLASK TESTER
+################### CREATING QUICK FLASK TESTER ###############################################
     
 app = Flask(__name__) # instantiates node
     

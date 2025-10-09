@@ -1,7 +1,7 @@
 import argparse, json, os, sys, struct, hashlib
 from uuid import uuid4
 from pathlib import Path
-
+import serial, serial.tools.list_ports
 from blockchain import Blockchain
 
 STATE_FILE = Path(".chain_state.json"); #create path inside blockchain folder to create chain_state,json
@@ -25,14 +25,39 @@ def verify_pow(last_proof: int, proof: int, zeros: int) -> bool:
     digest = hashlib.sha256(guess).hexdigest();
     return digest.startswith("0" * zeros);
 
-def proof_of_work_offload(last_proof: int, zeros: int = 4, port: str = None, start_nonce: int = 0, batch_size: int = 500_000) -> int:
+def proof_of_work_offload(last_proof: int, zeros: int = 4, port: str = None, start_nonce: int = 0, batch_size: int = 500_000, baud: int = 115200, timeout_s: float=5.0,) -> int:
     #Should have UART protocol, want to test with CPU mining for now
-    proof = start_nonce;
+    if not port:
+        raise (RuntimeError("Missing --port (eg. --port <port_name>)"));
     
-    while True:
-        if verify_pow(last_proof, proof, zeros):
-            return proof
-        proof += 1;
+    try:
+        ser = serial.Serial(port=port, baudrate=baud, timeout=timeout_s)
+    except serial.SerialException as e:
+        ports = ", ".join(p.device for p in serial.tools.list_ports.comports()) or "None Found"
+        raise RuntimeError(f"Could not open ports. {e} \n Available ports: {ports}")
+    
+    try:
+        nonce = start_nonce
+        while True:
+            #send one batch to FPGA
+            send_mining_batch(ser, last_proof, nonce, batch_size, zeros)
+            #wait for FPGA answer
+            result, err = recieve_batch_result(ser, timeout_s=timeout_s);
+            if err:
+                raise RuntimeError(f"UART Error. {err}")
+            
+            kind, value = result;
+            
+            if kind == "FOUND":
+                return value #winning proof
+            elif kind == "NONE":
+                nonce += batch_size #trying next range of batches, sending batches as to not overload the FPGA with info
+            else:
+                raise RuntimeError(f"Unexpected result: {result}")
+            
+    finally:
+        ser.close()
+            
         
 def cmd_mine(args):
     node_id, persisted_chain, mempool = load_state();
@@ -101,6 +126,33 @@ def cmd_chain(_args):
         "length": len(blk.chain),
     }
     print(json.dumps(out, indent=2));
+    
+def send_mining_batch(ser, last_proof:int, start_nonce:int,batch_size:int,zeros:int):
+    
+    payload = struct.pack('<IQIB', last_proof, start_nonce, batch_size,zeros); #changes message to binary encoding w/ 17 bytes
+    ser.write(payload)
+    ser.flush();
+    
+    
+def recieve_batch_result(ser, timeout_s: float = 5.0):
+    ser.timeout = timeout_s
+    hdr = ser.read(1) #header
+    
+    if len(hdr) != 1:
+        return None, "timeout"
+    status = hdr[0];
+    
+    if status == 0x01: #FOUND
+        proof_bytes = ser.read(8);
+        if len(proof_bytes) != 8:
+            return None, "short FOUND payload"
+        (proof,) = struct.unpack('<Q', proof_bytes)
+        return ("FOUND", proof), None
+    elif status == 0x00: #NONE
+        return("NONE", None), None #named tuple
+    else:
+        return None, f'Unexpected status 0x{status:02x}'
+    
     
 def main():
     p = argparse.ArgumentParser(prog="mini-chain")
