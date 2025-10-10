@@ -4,6 +4,7 @@ from time import time
 from uuid import uuid4
 from textwrap import dedent
 from flask import Flask, jsonify, request
+import struct
 
 class Blockchain (object):
     def __init__(self):
@@ -55,7 +56,7 @@ class Blockchain (object):
     def valid_proof(last_proof, proof, zeros=4):
         #validates the proof does hash(p * p_past) have 4 leading zeros
         
-        guess = f'{last_proof}{proof}'.encode()
+        guess = struct.pack("<IQ", int(last_proof), int(proof))
         hashed_guess = hashlib.sha256(guess).hexdigest();
         return hashed_guess.startswith('0' * zeros)
     

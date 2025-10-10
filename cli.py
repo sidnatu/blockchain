@@ -20,7 +20,7 @@ def save_state(node_id, chain, mempool):
         json.dump({'node_id': node_id, "chain": chain, "mempool": mempool}, f, indent=2)
         
 def verify_pow(last_proof: int, proof: int, zeros: int) -> bool:
-    guess = f'{last_proof}{proof}'.encode()
+    guess = struct.pack("<IQ", int(last_proof), int(proof))
     #will have to update to change to binary for FPGA mining
     digest = hashlib.sha256(guess).hexdigest();
     return digest.startswith("0" * zeros);
@@ -183,8 +183,4 @@ def main():
     
 if __name__ == "__main__":
     main();
-
-
-    
-    
-    
+   
