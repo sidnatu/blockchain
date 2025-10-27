@@ -10,7 +10,7 @@ module uart_rx # (
 
 )(
     input logic clk,
-    input logic reset, //active-low i think?
+    input logic rst, //active-low i think?
     input logic rx_i, //async input from python code
 
     output logic [7:0] data,
@@ -33,28 +33,75 @@ always_ff @(posedge clk) begin
         rx_sync <= rx_meta;
     end
 end
-
+//----------------------
 //Fractional N-Baud Tick
 //  Generates a tick at baud * oversample
-
+//----------------------
 localparam longint unsigned incr_num = baud * oversample;
 localparam longint unsigned incr_den = clk_hz;
 localparam int unsigned incr = int'(((incr_num << ACC_width) + (incr_den/2)) / incr_den);
 
-logic [ACC_width:0] phase // one extra bit for carry
+logic [ACC_width:0] phase; // one extra bit for carry
 logic os_tick; //oversample tick
 
 always_ff @(posedge clk) begin
     if (rst) begin
-        phase <= `0;
-        os_tick <= 1'b0;
+        phase <= '0;
+        os_tick <= 1'b0; 
     end else begin
         // accumulate; when most sig bit toggles, emit a tick
         logic [ACC_width:0] nextphase = phase + incr;
-        os_tick = <= nextphase[ACC_width]; //carry becomes the tick
-        phase <= {1'b0, nextphase[ACC_width:0]}; //drop carry
+        os_tick <= nextphase[ACC_width]; //carry becomes the tick
+        phase <= {1'b0, nextphase[ACC_width-1:0]}; //drop carry
     end
 end
+//----------------------
+//RECIEVER STATE MACHINE (16x oversample)
+//----------------------
+
+typedef enum logic [2:0] {IDLE, START, DATA, STOP } state_t;
+
+state_t state;
+
+logic [$clog2(oversample)-1:0] sample_count; //counts 0->15
+logic [2:0] bit_index;
+logic [7:0] shreg;
+
+//defaults
+
+always_comb begin
+    valid = 1'b0;
+    framing_err = 1'b0;
+    busy = (state != IDLE);
+end
+
+always_ff @(posedge clk) begin
+    if(rst) begin
+        state <= IDLE;
+        sample_count <= '0;
+        bit_index <= '0;
+        shreg <= '0;
+        data <= '0;
+    end else begin
+        if (os_tick) begin
+            unique case (state)
+                IDLE: begin
+                    if (rx_sync == 1'b0) begin
+                        state <= START;
+                        sample_count = '0;
+                    end
+                end 
+                default: 
+            endcase
+        end
+    end
+
+
+end
+
+
+
+
 
 
 
