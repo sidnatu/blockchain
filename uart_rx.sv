@@ -90,19 +90,52 @@ always_ff @(posedge clk) begin
                         state <= START;
                         sample_count = '0;
                     end
+                end
+
+                START: begin
+                    if (sample_count == (oversample/2-1)) begin
+                        if (rx_sync == 1'b0)begin
+                            state <= DATA;
+                            sample_count <= '0;
+                            bit_index <= 3'd0;
+                        end else begin
+                            state <= IDLE;
+                        end
+                    end else begin
+                        sample_count <= sample_count + 1'b1;
+                    end
+                end
+
+                DATA: begin
+                    if (sample_count == (oversample - 1)) begin
+                        sample_count <= '0;
+                        shreg <= {rx_sync, shreg[7:1]};
+                        if (bit_index == 3'd7)begin
+                            state = STOP;
+                        end else begin
+                            bit_index <= bit_index + 3'd1;
+                        end
+                    end else begin
+                        sample_count <= sample_count + 1'b1;
+                    end
+                end
+
+
+                STOP: begin
+                    if (sample_count == (oversample - 1)) begin
+                        sample_count <= '0;
+                        data <= shreg;
+                        valid <= 1'b1;
+                        if (rx_sync == 1'b0) begin
+                            framing_err <= 1'b1;
+                        end
+                        state <= IDLE;
+                    end else begin
+                        sample_count <= sample_count + 1'b1;
+                    end
                 end 
-                default: 
-            endcase
+                endcase
         end
     end
-
-
 end
-
-
-
-
-
-
-
 endmodule
