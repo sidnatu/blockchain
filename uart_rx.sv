@@ -1,12 +1,12 @@
 // uart_reciever - 8-N-1 (8 data bits, no parity, one stop bit) 16x oversampling
-// inputs: clk_hz, baud, oversample
+// inputs: CLK_HZ, BAUD, OVERSAMPLE
 //outputs: valid pulse with data and set flags
 
 module uart_rx # (
-    parameter int unsigned clk_hz = 50_000_000,
-    parameter int unsigned baud = 115_200,
-    parameter int unsigned oversample = 16,
-    parameter int unsigned ACC_width = 24 //width for nco phase accumulator
+    parameter int unsigned CLK_HZ = 50_000_000,
+    parameter int unsigned BAUD = 115_200,
+    parameter int unsigned OVERSAMPLE = 16,
+    parameter int unsigned ACC_WIDTH = 24 //width for nco phase accumulator
 
 )(
     input logic clk,
@@ -34,15 +34,15 @@ always_ff @(posedge clk) begin
     end
 end
 //----------------------
-//Fractional N-Baud Tick
-//  Generates a tick at baud * oversample
+//Fractional N-BAUD Tick
+//  Generates a tick at BAUD * OVERSAMPLE
 //----------------------
-localparam longint unsigned incr_num = baud * oversample;
-localparam longint unsigned incr_den = clk_hz;
-localparam int unsigned incr = int'(((incr_num << ACC_width) + (incr_den/2)) / incr_den);
+localparam longint unsigned incr_num = BAUD * OVERSAMPLE;
+localparam longint unsigned incr_den = CLK_HZ;
+localparam int unsigned incr = int'(((incr_num << ACC_WIDTH) + (incr_den/2)) / incr_den);
 
-logic [ACC_width:0] phase; // one extra bit for carry
-logic os_tick; //oversample tick
+logic [ACC_WIDTH:0] phase; // one extra bit for carry
+logic os_tick; //OVERSAMPLE tick
 
 always_ff @(posedge clk) begin
     if (rst) begin
@@ -50,20 +50,20 @@ always_ff @(posedge clk) begin
         os_tick <= 1'b0; 
     end else begin
         // accumulate; when most sig bit toggles, emit a tick
-        logic [ACC_width:0] nextphase = phase + incr;
-        os_tick <= nextphase[ACC_width]; //carry becomes the tick
-        phase <= {1'b0, nextphase[ACC_width-1:0]}; //drop carry
+        logic [ACC_WIDTH:0] nextphase = phase + incr;
+        os_tick <= nextphase[ACC_WIDTH]; //carry becomes the tick
+        phase <= {1'b0, nextphase[ACC_WIDTH-1:0]}; //drop carry
     end
 end
 //----------------------
-//RECIEVER STATE MACHINE (16x oversample)
+//RECIEVER STATE MACHINE (16x OVERSAMPLE)
 //----------------------
 
 typedef enum logic [2:0] {IDLE, START, DATA, STOP } state_t;
 
 state_t state;
 
-logic [$clog2(oversample)-1:0] sample_count; //counts 0->15
+logic [$clog2(OVERSAMPLE)-1:0] sample_count; //counts 0->15
 logic [2:0] bit_index;
 logic [7:0] shreg;
 
@@ -93,7 +93,7 @@ always_ff @(posedge clk) begin
                 end
 
                 START: begin
-                    if (sample_count == (oversample/2-1)) begin
+                    if (sample_count == (OVERSAMPLE/2-1)) begin
                         if (rx_sync == 1'b0)begin
                             state <= DATA;
                             sample_count <= '0;
@@ -107,7 +107,7 @@ always_ff @(posedge clk) begin
                 end
 
                 DATA: begin
-                    if (sample_count == (oversample - 1)) begin
+                    if (sample_count == (OVERSAMPLE - 1)) begin
                         sample_count <= '0;
                         shreg <= {rx_sync, shreg[7:1]};
                         if (bit_index == 3'd7)begin
@@ -122,7 +122,7 @@ always_ff @(posedge clk) begin
 
 
                 STOP: begin
-                    if (sample_count == (oversample - 1)) begin
+                    if (sample_count == (OVERSAMPLE - 1)) begin
                         sample_count <= '0;
                         data <= shreg;
                         valid <= 1'b1;
