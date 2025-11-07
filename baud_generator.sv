@@ -12,7 +12,7 @@ module baud_generator #(
 
     //One-clock strobes
     output logic tick_oversample, //fires at BAUD * OVERSAMPLE
-    output logic tick_baud //fires at BAUD
+    output logic tick_baud, //fires at BAUD
     output logic tick_sample //fires mid-bit
 );
 

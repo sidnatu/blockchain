@@ -25,7 +25,7 @@ module uart_rx # (
 logic rx_meta, rx_sync;
 always_ff @(posedge clk) begin
     
-    if rst begin
+    if (rst) begin
         rx_meta <= 1'b1;
         rx_sync <= 1'b1;
     end else begin
@@ -43,14 +43,15 @@ localparam int unsigned incr = int'(((incr_num << ACC_WIDTH) + (incr_den/2)) / i
 
 logic [ACC_WIDTH:0] phase; // one extra bit for carry
 logic os_tick; //OVERSAMPLE tick
+logic [ACC_WIDTH:0] nextphase;
 
-always_ff @(posedge clk) begin
+always_ff@(posedge clk) begin
     if (rst) begin
         phase <= '0;
-        os_tick <= 1'b0; 
+        os_tick <= '0; 
     end else begin
         // accumulate; when most sig bit toggles, emit a tick
-        logic [ACC_WIDTH:0] nextphase = phase + incr;
+        nextphase = phase + incr;
         os_tick <= nextphase[ACC_WIDTH]; //carry becomes the tick
         phase <= {1'b0, nextphase[ACC_WIDTH-1:0]}; //drop carry
     end
@@ -70,19 +71,21 @@ logic [7:0] shreg;
 //defaults
 
 always_comb begin
-    valid = 1'b0;
-    framing_err = 1'b0;
     busy = (state != IDLE);
 end
 
 always_ff @(posedge clk) begin
-    if(rst) begin
+    if (rst) begin
         state <= IDLE;
         sample_count <= '0;
         bit_index <= '0;
         shreg <= '0;
         data <= '0;
+        valid <= '0;
+        framing_err <= '0;
     end else begin
+        valid <= '0;
+        framing_err <= '0;
         if (os_tick) begin
             unique case (state)
                 IDLE: begin

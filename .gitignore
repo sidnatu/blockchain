@@ -13,3 +13,8 @@ env/
 .vscode/
 .idea/
 .DS_Store
+#ModelSim stuff
+testbenches/work/
+testbenches/*.wlf
+testbenches/*.cr.mti
+testbenches/*.mpf
