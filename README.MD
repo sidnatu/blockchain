@@ -4,9 +4,10 @@ This project is my attempt to create a De1SoC miner to mine my own blockchain ma
 
 ## How it's made
 
-**Tools Used:** Verilog, Python, De1SoC, ChatGPT \(for code explanation)
-The blockchain made in Python was made using following an online tutorial, linked [here](https://hackernoon.com/learn-blockchains-by-building-one-117428612f46).
-The miner was made using a combination of ChatGPT to explain code and Google to find tricky code to implement, like the UART reciever/transmitter.
+**Tools Used:** Verilog, Python, De1SoC, ChatGPT \(for code explanation)>
+
+> The blockchain made in Python was made using following an online tutorial, linked [here](https://hackernoon.com/learn-blockchains-by-building-one-117428612f46).>
+> The miner was made using a combination of ChatGPT to explain code and Google to find tricky code to implement, like the UART reciever/transmitter.
 
 #### Lessons Learned
 
