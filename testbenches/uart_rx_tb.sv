@@ -1,91 +1,81 @@
-module uart_rx_tb();
-//inputs
-logic sim_clk, sim_rst, sim_rx_i;
-//outputs
-logic [7:0] sim_data;
-logic sim_valid,sim_framing_err,sim_busy;
+// This testbench will exercise the UART RX.
+// It sends out byte 0x37, and ensures the RX receives it correctly.
+`timescale 1ns/10ps
 
-//instantiating the DUT
+module UART_RX_TB();
 
-uart_rx #(50_000_000, 115_200, 16, 24) DUT (
-    .clk(sim_clk),
-    .rst(sim_rst),
-    .rx_i(sim_rx_i),
-    .data(sim_data),
-    .valid(sim_valid),
-    .framing_err(sim_framing_err),
-    .busy(sim_busy)
-);
+  // Testbench uses a 25 MHz clock (same as Go Board)
+  // Want to interface to 115200 baud UART
+  // 25000000 / 115200 = 217 Clocks Per Bit.
+  parameter c_CLOCK_PERIOD_NS = 40;
+  parameter c_CLKS_PER_BIT    = 217;
+  parameter c_BIT_PERIOD      = 8600;
+  
+  reg r_Clock = 0;
+  reg r_RX_Serial = 1;
+  wire [7:0] w_RX_Byte;
+  
 
-localparam int unsigned CLK_HZ = 50_000_000;
-localparam int unsigned BAUD = 115_200;
-
-localparam int BAUD_TICKS = CLK_HZ/BAUD;
-
-task automatic drive_bit (input logic b);
+  // Takes in input byte and serializes it 
+  task UART_WRITE_BYTE;
+    input [7:0] i_Data;
+    integer     ii;
     begin
-        sim_rx_i = b;
-        repeat(BAUD_TICKS) @(posedge sim_clk);
-    end
-endtask
-
-task automatic drive_byte(input logic [7:0] in_byte);
-    int i;
-    begin
-        drive_bit(1'b0);
-        for (i = 0; i < 8; i++) begin
-            drive_bit(in_byte[i]);
+      
+      // Send Start Bit
+      r_RX_Serial <= 1'b0;
+      #(c_BIT_PERIOD);
+      #1000;
+      
+      // Send Data Byte
+      for (ii=0; ii<8; ii=ii+1)
+        begin
+          r_RX_Serial <= i_Data[ii];
+          #(c_BIT_PERIOD);
         end
-        drive_bit(1'b1);
-        repeat (BAUD_TICKS) @(posedge sim_clk);
-    end 
-endtask
+      
+      // Send Stop Bit
+      r_RX_Serial <= 1'b1;
+      #(c_BIT_PERIOD);
+     end
+  endtask // UART_WRITE_BYTE
+  
+  
+  UART_RX #(.CLKS_PER_BIT(c_CLKS_PER_BIT)) UART_RX_INST
+    (.i_Clock(r_Clock),
+     .i_RX_Serial(r_RX_Serial),
+     .o_RX_DV(),
+     .o_RX_Byte(w_RX_Byte)
+     );
+  
+  always
+    #(c_CLOCK_PERIOD_NS/2) r_Clock <= !r_Clock;
 
-//starting the clock
-
-initial begin
-    sim_clk = 1'b0;
-end
-
-always #10 sim_clk = ~sim_clk; //50 Mhz;
-
-// starting actual testing
-
-initial begin
-    $display("Testing if reset works. Data should always be zero.");
-    sim_rx_i = 1'b1;
-    sim_rst = 1'b1;
-
-    repeat (100) @(posedge sim_clk);
-
-    if (sim_data != 8'b0)
-    $display("Error, data is being driven by something.");
-
-    // now testing inputs
-
-    sim_rst = 1'b0;
-    repeat (50) @(posedge sim_clk);
-
-    drive_byte(8'h0F);
-    wait(sim_valid);
-    @(posedge sim_clk);
-    if (sim_framing_err != 1'b0)
-    $display("Unexpected framing error.");
-    if (sim_data !== 8'b0000_1111)
-    $display("Data is not getting the output.");
-
-
-end
-
-
-
-
-
-
-
-
-
-
+  
+  // Main Testing:
+  initial
+    begin
+      // Send a command to the UART (exercise Rx)
+      @(posedge r_Clock);
+      UART_WRITE_BYTE(8'h37);
+      @(posedge r_Clock);
+            
+      // Check that the correct command was received
+      if (w_RX_Byte == 8'h37)
+        $display("Test Passed - Correct Byte Received");
+      else
+        $display("Test Failed - Incorrect Byte Received");
+//-----------------TEST 2-----------------//
+      #1000000;
+      // Send a command to the UART (exercise Rx)
+      @(posedge r_Clock);
+      UART_WRITE_BYTE(8'd25);
+      @(posedge r_Clock);
+            
+      // Check that the correct command was received
+      if (w_RX_Byte == 8'd25)
+        $display("Test Passed - Correct Byte Received");
+      else
+        $display("Test Failed - Incorrect Byte Received");       
+    end
 endmodule
-
-
