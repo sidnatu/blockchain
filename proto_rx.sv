@@ -1,9 +1,10 @@
 // reciever protocol
 // from the Python (<IQIB)
-// [0...3] = last proof
-// [4..11] = start nonce
+// byte(s)    = what they mean
+// [0...3]  = last proof
+// [4..11]  = start nonce
 // [12..15] = batch_size
-// 16 zeros
+// 16       = zeros
 
 module proto_rx (
     input logic clk,

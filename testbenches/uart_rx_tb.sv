@@ -7,9 +7,9 @@ module UART_RX_TB();
   // Testbench uses a 25 MHz clock (same as Go Board)
   // Want to interface to 115200 baud UART
   // 25000000 / 115200 = 217 Clocks Per Bit.
-  parameter c_CLOCK_PERIOD_NS = 40;
-  parameter c_CLKS_PER_BIT    = 217;
-  parameter c_BIT_PERIOD      = 8600;
+  parameter c_CLOCK_PERIOD_NS = 20;
+  parameter c_CLKS_PER_BIT    = 434;
+  parameter c_BIT_PERIOD      = 8680;
   
   reg r_Clock = 0;
   reg r_RX_Serial = 1;
