@@ -65,7 +65,7 @@ module proto_tx (
 
             S_SEND_NONCE: begin
                 if (!tx_busy) begin
-                    data = nonce_reg[7:0];
+                    tx_data = nonce_reg[7:0];
                     send = 1'b1;
                     next_state = S_WAIT_NONCE;
                 end
@@ -93,7 +93,7 @@ module proto_tx (
         end
 
         if (state == S_WAIT_NONCE && !tx_busy)begin
-            nonce_reg <= {8'h00, nonce_reg[63:8]}
+            nonce_reg <= {8'h00, nonce_reg[63:8]};
             byte_idx <= byte_idx + 3'd1;
         end        
      end
